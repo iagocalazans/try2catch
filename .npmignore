@@ -1,0 +1,6 @@
+.vscode/
+.eslintrc.js
+.gitignore
+src/
+tsconfig.json
+tsconfig.tsbuildinfo
