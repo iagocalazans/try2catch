@@ -37,14 +37,13 @@ export class Try<P> {
   }
 
   static async promise<T>(promise: Promise<T>): Promise<Try<T>> {
-    if (promise !instanceof Promise) {
-      //@ts-ignore
-      return new Try(undefined, promise);
-    }
-
     try {
-      const data = await promise;
-      return new Try(undefined, data);
+      if (promise instanceof Promise) {
+        const data = await promise;
+        return new Try(undefined, data);
+      }
+
+      return new Try(undefined, promise);
     } catch (err: any) {
       return new Try(err);
     }
