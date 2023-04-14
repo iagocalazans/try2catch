@@ -32,28 +32,28 @@ export class Try<P> {
    *  The static function to create new Result objects with the sucessfull data object.
    *
    */
-  static success<T>(data: T): Try<T> {
-    return new Try(undefined, data);
+  static success<T>(data: T): Either<undefined, Try<T>> {
+    return right(new Try(undefined, data));
   }
 
-  static async promise<T>(promise: Promise<T>): Promise<Try<T>> {
+  static async promise<T>(promise: Promise<T>): Promise<Either<any, Try<Awaited<T>>>> {
     try {
       if (promise instanceof Promise) {
         const data = await promise;
-        return new Try(undefined, data);
+        return right(new Try(undefined, data));
       }
 
-      return new Try(undefined, promise);
+      return right(new Try(undefined, promise));
     } catch (err: any) {
-      return new Try(err);
+      return left(new Try(err));
     }
   }
 
   /**
    *  The static function to create new Result objects with the failed error object.
    */
-  static fail<T extends Error>(error: T): Try<T> {
-    return new Try(error);
+  static fail<T extends Error>(error: T): Either<Try<T>, undefined> {
+    return left(new Try(error));
   }
 
   /**
@@ -85,3 +85,47 @@ export class Try<P> {
     return this._e;
   }
 }
+
+
+export type Either<L, A> = Left<L, A> | Right<L, A>;
+
+class Left<L, A> {
+  readonly value: L;
+
+  constructor(value: L) {
+    this.value = value;
+  }
+
+  isLeft(): this is Left<L, A> {
+    return true;
+  }
+
+  isRight(): this is Right<L, A> {
+    return false;
+  }
+}
+
+class Right<L, A> {
+  readonly value: A;
+
+  constructor(value: A) {
+    this.value = value;
+  }
+
+  isLeft(): this is Left<L, A> {
+    return false;
+  }
+
+  isRight(): this is Right<L, A> {
+    return true;
+  }
+}
+
+const left = <L, A>(l: L): Either<L, A> => {
+  return new Left(l);
+};
+
+const right = <L, A>(a: A): Either<L, A> => {
+  return new Right<L, A>(a);
+};
+
