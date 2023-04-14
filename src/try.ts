@@ -36,14 +36,9 @@ export class Try<P> {
     return right(new Try(undefined, data));
   }
 
-  static async promise<T>(promise: Promise<T>): Promise<Either<any, Try<Awaited<T>>>> {
+  static async promise<L,T>(promise: Promise<T>): Promise<Either<{ error: L }, Try<Awaited<T>>>> {
     try {
-      if (promise instanceof Promise) {
-        const data = await promise;
-        return right(new Try(undefined, data));
-      }
-
-      return right(new Try(undefined, promise));
+      return right(new Try<Awaited<T>>(undefined, await Promise.resolve(promise)));
     } catch (err: any) {
       return left(new Try(err));
     }
@@ -54,13 +49,6 @@ export class Try<P> {
    */
   static fail<T extends Error>(error: T): Either<Try<T>, undefined> {
     return left(new Try(error));
-  }
-
-  /**
-   * Check the class type, if it has an error, or not
-   */
-  get isError(): boolean {
-    return !!this._e;
   }
 
   /**
@@ -96,11 +84,11 @@ class Left<L, A> {
     this.value = value;
   }
 
-  isLeft(): this is Left<L, A> {
+  isError(): this is Left<L, A> {
     return true;
   }
 
-  isRight(): this is Right<L, A> {
+  isOk(): this is Right<L, A> {
     return false;
   }
 }
@@ -112,11 +100,11 @@ class Right<L, A> {
     this.value = value;
   }
 
-  isLeft(): this is Left<L, A> {
+  isError(): this is Left<L, A> {
     return false;
   }
 
-  isRight(): this is Right<L, A> {
+  isOk(): this is Right<L, A> {
     return true;
   }
 }
@@ -126,6 +114,5 @@ const left = <L, A>(l: L): Either<L, A> => {
 };
 
 const right = <L, A>(a: A): Either<L, A> => {
-  return new Right<L, A>(a);
+  return new Right(a);
 };
-
