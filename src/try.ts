@@ -40,7 +40,7 @@ export class Try<P> {
     try {
       return success(new Try<Awaited<T>>(undefined, await Promise.resolve(promise)));
     } catch (err: any) {
-      return failed(new Try(err));
+      return failed(new Try<Awaited<L>>(err));
     }
   }
 
