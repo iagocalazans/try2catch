@@ -51,7 +51,7 @@ const processing = async () => {
 }
 ```
 
-In this example, `Try.promise()` takes a Promise as an argument and returns an object with two properties: `isError` and `data`. If the Promise resolves successfully, `isError` will be `false` and `data` will contain the resolved value. If the Promise is rejected, `isError will` be `true` and `data` will contain the error object.
+In this example, `Try.promise()` takes a Promise as an argument and returns an object with a method and a propertie: `<result>.isError()` and `data`. If the Promise resolves successfully, `<result>.isError()` will be `false` and `data` will contain the resolved value. If the Promise is rejected, `<result>.isError()` will be `true` and `data` will contain the error object.
 
 ## License
 
