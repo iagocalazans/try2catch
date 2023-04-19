@@ -26,7 +26,14 @@ Create a Promise that resolves or rejects after some time, for example:
 
 ```javascript
 const awaiter = new Promise((res, reject) => {
-    setTimeout(() => res('Nice!'), 5000);
+    const random = (Math.random() * 10) + 1
+    setTimeout(() => { 
+            if (random > 5) {
+                return res('Nice!');
+            }
+        
+            return reject(new Error('Failed!'));
+        }, 5000);
 });
 ```
 
@@ -36,7 +43,7 @@ An asynchronous function that uses Try to handle the Promise's result:
 const processing = async () => {
     const result = await Try.promise(awaiter)
 
-    if (result.isError) {
+    if (result.isError()) {
         return result.error;
     }
 
