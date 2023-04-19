@@ -1,6 +1,6 @@
 {
   "name": "try2catch",
-  "version": "1.1.3",
+  "version": "1.1.4",
   "description": "A better try/catch like way to get your errors.",
   "main": "lib/index.js",
   "author": "Iago Calazans <iago.calazans@gmail.com>",
