@@ -32,23 +32,23 @@ export class Try<P> {
    *  The static function to create new Result objects with the sucessfull data object.
    *
    */
-  static success<T>(data: T): Either<undefined, Try<T>> {
-    return right(new Try(undefined, data));
+  static success<T>(data: T): Either<any, Try<T>> {
+    return success(new Try(undefined, data));
   }
 
-  static async promise<L,T>(promise: Promise<T>): Promise<Either<{ error: L }, Try<Awaited<T>>>> {
+  static async promise<L, T>(promise: Promise<T>): Promise<Either<Try<Awaited<L>>, Try<Awaited<T>>>> {
     try {
-      return right(new Try<Awaited<T>>(undefined, await Promise.resolve(promise)));
+      return success(new Try<Awaited<T>>(undefined, await Promise.resolve(promise)));
     } catch (err: any) {
-      return left(new Try(err));
+      return failed(new Try(err));
     }
   }
 
   /**
    *  The static function to create new Result objects with the failed error object.
    */
-  static fail<T extends Error>(error: T): Either<Try<T>, undefined> {
-    return left(new Try(error));
+  static fail<T extends Error>(error: T): Either<Try<T>, any> {
+    return failed(new Try(error));
   }
 
   /**
@@ -75,15 +75,19 @@ export class Try<P> {
 }
 
 
-export type Either<L, A> = Left<L, A> | Right<L, A>;
+export type Either<L extends Try<unknown>, A extends Try<unknown>> = Left<L, A> | Right<L, A>;
 
-class Left<L, A> {
-  readonly value: L;
+class Left<L extends Try<unknown>, A extends Try<unknown>> {
+  private readonly value: L;
 
   constructor(value: L) {
     this.value = value;
   }
 
+  get error() {
+    return this.value.error
+  }
+
   isError(): this is Left<L, A> {
     return true;
   }
@@ -91,28 +95,60 @@ class Left<L, A> {
   isOk(): this is Right<L, A> {
     return false;
   }
+  
+  /**
+   * @deprecated
+   */
+  isLeft(): this is Left<L, A> {
+    return true;
+  }
+
+  /**
+   * @deprecated
+   */
+  isRight(): this is Right<L, A> {
+    return false;
+  }
 }
 
-class Right<L, A> {
-  readonly value: A;
+class Right<L extends Try<unknown>, A extends Try<unknown>> {
+  private readonly value: A;
 
   constructor(value: A) {
     this.value = value;
   }
 
-  isError(): this is Left<L, A> {
+  get data() {
+    return this.value.data
+  }
+
+  isError(): this is Left<L, A>  {
     return false;
   }
 
   isOk(): this is Right<L, A> {
     return true;
   }
+
+  /**
+   * @deprecated
+   */
+  isLeft(): this is Left<L, A> {
+    return false;
+  }
+
+  /**
+   * @deprecated
+   */
+  isRight(): this is Right<L, A> {
+    return true;
+  }
 }
 
-const left = <L, A>(l: L): Either<L, A> => {
+const failed = <L extends Try<unknown>, A extends Try<unknown>>(l: L): Either<L, A> => {
   return new Left(l);
 };
 
-const right = <L, A>(a: A): Either<L, A> => {
+const success = <L extends Try<unknown>, A extends Try<unknown>>(a: A): Either<L, A> => {
   return new Right(a);
 };
