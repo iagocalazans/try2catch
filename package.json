@@ -8,6 +8,13 @@
   "scripts": {
     "build": "tsc"
   },
+  "repository": {
+    "type": "git",
+    "url": "git+ssh://git@github.com/iagocalazans/try2catch.git"
+  },
+  "bugs": {
+    "url": "https://github.com/iagocalazans/try2catch/issues"
+  },
   "keywords": [
     "trycatch",
     "try",
@@ -24,5 +31,8 @@
     "eslint-plugin-n": "^15.0.0",
     "eslint-plugin-promise": "^6.0.0",
     "typescript": "*"
+  },
+  "engines": {
+    "node": ">=14"
   }
 }
