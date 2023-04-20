@@ -6,149 +6,86 @@ import { typeOf } from "./type-of";
 /**
  * The Try class provides an organized and simple way to return errors without having to wrap every request in Try/Catches.
  */
-export class Try<P> {
+export class Try<D> {
   /**
    * Stores the success return object as #data.
    */
-  private _d?: P;
+  protected readonly _value?: D;
 
-  /**
-   * Stores the failed return object as #error.
-   */
-  private _e?: any;
+  protected readonly _isError: boolean
 
-  private constructor(error: Error | undefined, data?: P) {
-    if (data instanceof Error) {
-      this._e = data;
-      return this;
-    }
-
-    this._d = data;
-    this._e = error;
+  protected constructor(data: D, isError = false) {
+    this._value = data;
+    this._isError = isError
     return this;
   }
 
   /**
-   *  The static function to create new Result objects with the sucessfull data object.
-   *
+   * 
+   * @param value 
+   * @returns The type of the value.
    */
-  static success<T>(data: T): Either<any, Try<T>> {
-    return success(new Try(undefined, data));
+  static typeOf(value: unknown) {
+    return typeOf(value);
   }
 
-  static async promise<L, T>(promise: Promise<T>): Promise<Either<Try<Awaited<L>>, Try<Awaited<T>>>> {
+  /**
+   * 
+   * @param promise
+   * @returns A Class of type TryThen or TryCatch that holds the resolved or rejected value from Promise.
+   */
+  static async promise<D>(promise: Promise<D>) {
     try {
-      return success(new Try<Awaited<T>>(undefined, await Promise.resolve(promise)));
+      return new TryThen<D>(await Promise.resolve(promise));
     } catch (err: any) {
-      return failed(new Try<Awaited<L>>(err));
+      return new TryCatch<any>(err);
     }
   }
 
   /**
-   *  The static function to create new Result objects with the failed error object.
+   * 
+   * @returns True when the Promise rejects and false when it resolves.
    */
-  static fail<T extends Error>(error: T): Either<Try<T>, any> {
-    return failed(new Try(error));
+  protected isError() {
+    return this._isError
   }
+}
 
+class TryThen<D> extends Try<D> {
   /**
-   * Retrieve the internal data object.
+   * @returns The Promise resolved value.
    */
   get data() {
-    if (typeOf(this._e) !== 'Undefined') {
+    if (this._isError) {
       throw new Error('This is not a successfull request. Result with error type instead.');
     }
 
-    return this._d;
+    return this._value;
+  }
+
+  isError(): this is TryCatch<D> {
+    return this._isError
+  }
+}
+
+class TryCatch<D> extends Try<D> {
+  constructor(data: D) {
+    super(data, true)
+    return this;
   }
 
   /**
-   * Retrieve the internal error object.
+   * @returns The Promise rejected error value.
    */
   get error() {
-    if (typeOf(this._d) !== 'Undefined') {
+    if (!this._isError) {
       throw new Error('This is a successfull request. Result with data type instead.');
     }
 
-    return this._e;
+    return this._value;
+  }
+
+  isError(): this is TryCatch<D> {
+    return this._isError
   }
 }
-
-
-export type Either<L extends Try<unknown>, A extends Try<unknown>> = Left<L, A> | Right<L, A>;
-
-class Left<L extends Try<unknown>, A extends Try<unknown>> {
-  private readonly value: L;
-
-  constructor(value: L) {
-    this.value = value;
-  }
-
-  get error() {
-    return this.value.error
-  }
-
-  isError(): this is Left<L, A> {
-    return true;
-  }
-
-  isOk(): this is Right<L, A> {
-    return false;
-  }
-  
-  /**
-   * @deprecated
-   */
-  isLeft(): this is Left<L, A> {
-    return true;
-  }
-
-  /**
-   * @deprecated
-   */
-  isRight(): this is Right<L, A> {
-    return false;
-  }
-}
-
-class Right<L extends Try<unknown>, A extends Try<unknown>> {
-  private readonly value: A;
-
-  constructor(value: A) {
-    this.value = value;
-  }
-
-  get data() {
-    return this.value.data
-  }
-
-  isError(): this is Left<L, A>  {
-    return false;
-  }
-
-  isOk(): this is Right<L, A> {
-    return true;
-  }
-
-  /**
-   * @deprecated
-   */
-  isLeft(): this is Left<L, A> {
-    return false;
-  }
-
-  /**
-   * @deprecated
-   */
-  isRight(): this is Right<L, A> {
-    return true;
-  }
-}
-
-const failed = <L extends Try<unknown>, A extends Try<unknown>>(l: L): Either<L, A> => {
-  return new Left(l);
-};
-
-const success = <L extends Try<unknown>, A extends Try<unknown>>(a: A): Either<L, A> => {
-  return new Right(a);
-};
