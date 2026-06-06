@@ -54,11 +54,31 @@ jobs:
           echo "📋 Package contents:"
           npm pack --dry-run
 
-      # Authenticates via OIDC, no token needed. Requires a Trusted Publisher for this
-      # repo + workflow at npmjs.com -> package -> Settings -> Trusted Publisher.
-      # Provenance is generated automatically when publishing through OIDC.
+      # A release is "stable" when BOTH the minor and the patch are even
+      # (e.g. 2.0.0, 2.2.0, 2.2.2): those publish under the `stable` dist-tag.
+      # Every other release goes to the default `latest` tag. Each `npm publish`
+      # sets a single tag, so the choice is made here, at publish time.
+      #
+      # Authenticates via OIDC, no token needed. Requires a Trusted Publisher for
+      # this repo + workflow at npmjs.com -> package -> Settings -> Trusted
+      # Publisher. Provenance is generated automatically when publishing via OIDC.
       - name: 🚀 Publish to npm (OIDC trusted publishing)
-        run: npm publish --provenance --access public
+        run: |
+          RELEASE_VERSION="${{ github.event.release.tag_name }}"
+          VERSION="${RELEASE_VERSION#v}"
+          CORE="${VERSION%%[-+]*}"
+          IFS='.' read -r MAJOR MINOR PATCH <<< "$CORE"
+
+          if [[ "$MINOR" =~ ^[0-9]+$ && "$PATCH" =~ ^[0-9]+$ ]] \
+             && (( MINOR % 2 == 0 )) && (( PATCH % 2 == 0 )); then
+            NPM_TAG="stable"
+            echo "🏷️ $VERSION is stable (minor=$MINOR, patch=$PATCH) -> publishing under '$NPM_TAG'"
+          else
+            NPM_TAG="latest"
+            echo "🏷️ $VERSION is not stable (minor=$MINOR, patch=$PATCH) -> publishing under '$NPM_TAG'"
+          fi
+
+          npm publish --provenance --access public --tag "$NPM_TAG"
 
       - name: ✅ Success notification
         run: |
