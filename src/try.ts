@@ -1,91 +1,80 @@
-/* eslint-disable @typescript-eslint/ban-ts-comment */
-/* eslint-disable @typescript-eslint/no-non-null-assertion */
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { typeOf } from "./type-of";
 
 /**
- * The Try class provides an organized and simple way to return errors without having to wrap every request in Try/Catches.
+ * Provides an organized and simple way to handle outcomes without wrapping every
+ * call site in try/catch, returning settlements as positional tuples.
  */
-export class Try<D> {
+export class Try {
   /**
-   * Stores the success return object as #data.
+   * Resolves the runtime type tag of a value.
+   *
+   * @param value - The value to inspect.
+   * @returns The type name of the value.
    */
-  protected readonly _value?: D;
-
-  protected readonly _isError: boolean
-
-  protected constructor(data: D, isError = false) {
-    this._value = data;
-    this._isError = isError
-    return this;
-  }
-
-  /**
-   * 
-   * @param value 
-   * @returns The type of the value.
-   */
-  static typeOf(value: unknown) {
+  static typeOf(value: unknown): string {
     return typeOf(value);
   }
 
   /**
-   * 
-   * @param promise
-   * @returns A Class of type TryThen or TryCatch that holds the resolved or rejected value from Promise.
+   * Runs a Promise and captures its settlement as a positional tuple, removing the
+   * need to wrap the call site in try/catch.
+   *
+   * Position 0 holds the resolved value and position 1 holds the rejection reason;
+   * exactly one of them is non-null on every settlement.
+   *
+   * @typeParam D - The type resolved by the Promise.
+   * @param promise - The Promise whose outcome will be captured.
+   * @returns `[value, null]` when it resolves, or `[null, reason]` when it rejects.
+   *
+   * @example
+   * ```typescript
+   * const [user, error] = await Try.promise(fetchUser(id));
+   *
+   * if (error) {
+   *   return error;
+   * }
+   *
+   * return user;
+   * ```
    */
-  static async promise<D>(promise: Promise<D>) {
+  static async promise<D>(
+    promise: Promise<D>,
+  ): Promise<[D, null] | [null, unknown]> {
     try {
-      return new TryThen<D>(await Promise.resolve(promise));
-    } catch (err: any) {
-      return new TryCatch<any>(err);
+      return [await promise, null];
+    } catch (err) {
+      return [null, err];
     }
   }
 
   /**
-   * 
-   * @returns True when the Promise rejects and false when it resolves.
+   * Runs many Promises in parallel and partitions their outcomes without ever rejecting.
+   *
+   * @typeParam D - The type resolved by each Promise.
+   * @param promises - The Promises to settle in parallel.
+   * @returns `[values, reasons]`: resolved values in position 0, rejection reasons in position 1.
+   *
+   * @example
+   * ```typescript
+   * const [values, reasons] = await Try.settled([fetchA(), fetchB()]);
+   * ```
    */
-  protected isError() {
-    return this._isError
-  }
-}
+  static async settled<D>(
+    promises: Promise<D>[],
+  ): Promise<[D[], unknown[]]> {
+    const results = await Promise.allSettled(promises);
 
-class TryThen<D> extends Try<D> {
-  /**
-   * @returns The Promise resolved value.
-   */
-  get data() {
-    if (this._isError) {
-      throw new Error('This is not a successfull request. Result with error type instead.');
+    const values: D[] = [];
+    const reasons: unknown[] = [];
+
+    for (const result of results) {
+      if (result.status === "fulfilled") {
+        values.push(result.value);
+      } else {
+        reasons.push(result.reason);
+      }
     }
 
-    return this._value;
-  }
-
-  isError(): this is TryCatch<D> {
-    return this._isError
-  }
-}
-
-class TryCatch<D> extends Try<D> {
-  constructor(data: D) {
-    super(data, true)
-    return this;
-  }
-
-  /**
-   * @returns The Promise rejected error value.
-   */
-  get error() {
-    if (!this._isError) {
-      throw new Error('This is a successfull request. Result with data type instead.');
-    }
-
-    return this._value;
-  }
-
-  isError(): this is TryCatch<D> {
-    return this._isError
+    return [values, reasons];
   }
 }
