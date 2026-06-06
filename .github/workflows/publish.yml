@@ -1,0 +1,66 @@
+name: 📦 Publish to npm
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  publish:
+    name: Publish Package
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - name: 📥 Checkout repository
+        uses: actions/checkout@v4
+
+      - name: 🔧 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          registry-url: 'https://registry.npmjs.org'
+
+      # OIDC trusted publishing requires npm >= 11.5.1; Node 20 ships with npm 10.x.
+      - name: ⬆️ Upgrade npm for OIDC trusted publishing
+        run: npm install -g npm@latest
+
+      - name: 📦 Install dependencies
+        run: npm install
+
+      - name: 🔄 Sync version from release tag
+        run: |
+          # Extract version from release tag (removes 'v' prefix if present)
+          RELEASE_VERSION="${{ github.event.release.tag_name }}"
+          VERSION="${RELEASE_VERSION#v}"
+
+          echo "📌 Release tag: $RELEASE_VERSION"
+          echo "📦 Package version: $VERSION"
+
+          # Update package.json version
+          npm version $VERSION --no-git-tag-version --allow-same-version
+
+          echo "✅ Version synced successfully"
+
+      - name: 🧪 Run tests
+        run: npm run test --if-present
+
+      - name: 🏗️ Build package
+        run: npm run build
+
+      - name: 🔍 Verify package contents
+        run: |
+          echo "📋 Package contents:"
+          npm pack --dry-run
+
+      # Authenticates via OIDC, no token needed. Requires a Trusted Publisher for this
+      # repo + workflow at npmjs.com -> package -> Settings -> Trusted Publisher.
+      # Provenance is generated automatically when publishing through OIDC.
+      - name: 🚀 Publish to npm (OIDC trusted publishing)
+        run: npm publish --provenance --access public
+
+      - name: ✅ Success notification
+        run: |
+          echo "🎉 Successfully published try2catch@${{ github.event.release.tag_name }} to npm!"
+          echo "📦 View on npm: https://www.npmjs.com/package/try2catch"
