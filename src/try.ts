@@ -56,31 +56,45 @@ export class Try {
   /**
    * Runs many Promises in parallel and partitions their outcomes without ever rejecting.
    *
+   * Each partition preserves the original position of its Promise as the first element
+   * of an `[index, value]` (or `[index, reason]`) pair, so a settlement can be traced
+   * back to the Promise that produced it even after the outcomes are split apart.
+   *
    * @typeParam D - The type resolved by each Promise.
    * @param promises - The Promises to settle in parallel.
-   * @returns `[values, reasons]`: resolved values in position 0, rejection reasons in position 1.
+   * @returns `[values, reasons]`: resolved settlements as `[index, value]` pairs in position 0,
+   * rejected settlements as `[index, reason]` pairs in position 1.
    *
    * @example
    * ```typescript
    * const [values, reasons] = await Try.settled([fetchA(), fetchB()]);
+   *
+   * for (const [index, value] of values) {
+   *   console.log(`Promise ${index} resolved with`, value);
+   * }
    * ```
    */
   static async settled<D>(
     promises: Promise<D>[],
-  ): Promise<[D[], unknown[]]> {
+  ): Promise<[[number, Awaited<D>][], [number, unknown][]]> {
     const results = await Promise.allSettled(promises);
 
-    const values: D[] = [];
-    const reasons: unknown[] = [];
+    const values: [number, Awaited<D>][] = [];
+    const reasons: [number, unknown][] = [];
 
-    for (const result of results) {
-      if (result.status === "fulfilled") {
-        values.push(result.value);
-      } else {
-        reasons.push(result.reason);
-      }
-    }
+    const { values: v, reasons: r } = results.reduce(
+      (pv, cv, i) => {
+        if (cv.status === "fulfilled") {
+          pv.values.push([i, cv.value]);
+        } else {
+          pv.reasons.push([i, cv.reason]);
+        }
 
-    return [values, reasons];
+        return pv;
+      },
+      { values, reasons },
+    );
+
+    return [v, r];
   }
 }
