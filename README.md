@@ -61,7 +61,19 @@ In this example, `Try.promise()` takes a Promise as an argument and returns a po
 const [values, reasons] = await Try.settled([fetchA(), fetchB(), fetchC()]);
 ```
 
-`values` collects every resolved value and `reasons` collects every rejection reason, in the order they settled.
+`values` collects every resolved settlement and `reasons` collects every rejection, each as an `[index, value]` (or `[index, reason]`) pair. The index is the original position of the Promise in the input array, so an outcome can always be traced back to the call that produced it:
+
+```javascript
+const [values, reasons] = await Try.settled([fetchA(), fetchB(), fetchC()]);
+
+for (const [index, value] of values) {
+  console.log(`Promise ${index} resolved with`, value);
+}
+
+for (const [index, reason] of reasons) {
+  console.error(`Promise ${index} rejected with`, reason);
+}
+```
 
 ### Inspecting types
 
