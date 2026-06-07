@@ -22,7 +22,13 @@ export class Try {
    * Position 0 holds the resolved value and position 1 holds the rejection reason;
    * exactly one of them is non-null on every settlement.
    *
+   * The reason slot is constrained to a non-nullish type (defaulting to `Error`)
+   * so the tuple behaves as a discriminated union. After destructuring, a truthiness
+   * check on the reason narrows the value slot from `D | null` down to `D`, which lets
+   * an early `throw`/`return` on the error branch leave a non-null value behind.
+   *
    * @typeParam D - The type resolved by the Promise.
+   * @typeParam E - The rejection reason type. Must be non-nullish to preserve narrowing.
    * @param promise - The Promise whose outcome will be captured.
    * @returns `[value, null]` when it resolves, or `[null, reason]` when it rejects.
    *
@@ -31,19 +37,19 @@ export class Try {
    * const [user, error] = await Try.promise(fetchUser(id));
    *
    * if (error) {
-   *   return error;
+   *   throw error;
    * }
    *
    * return user;
    * ```
    */
-  static async promise<D>(
+  static async promise<D, E extends NonNullable<unknown> = Error>(
     promise: Promise<D>,
-  ): Promise<[D, null] | [null, unknown]> {
+  ): Promise<[D, null] | [null, E]> {
     try {
       return [await promise, null];
     } catch (err) {
-      return [null, err];
+      return [null, err as E];
     }
   }
 
